@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI & GIS Quiz — Inline Answers</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg-primary:#0a0a0f;
+      --bg-secondary:#1a1a2e;
+      --bg-card:rgba(26,26,46,0.8);
+      --accent-cyan:#00ffff;
+      --accent-magenta:#ff00ff;
+      --text-primary:#ffffff;
+      --text-secondary:#b8b8d1;
+      --border-color:rgba(255,255,255,0.12);
+      --success:#00ff88;
+      --error:#ff4757;
+      --shadow-glow:0 0 20px rgba(0,255,255,0.3);
+      --transition: all .3s cubic-bezier(.4,0,.2,1);
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{
+      font-family:'Inter',system-ui,Segoe UI,Roboto,Arial,sans-serif;
+      background:linear-gradient(135deg,var(--bg-primary) 0%,var(--bg-secondary) 100%);
+      color:var(--text-primary);
+      min-height:100vh; line-height:1.6;
+    }
+    .container{max-width:900px;margin:0 auto;padding:2rem 1rem}
+    header{ text-align:center; padding:2rem 0; border-bottom:1px solid var(--border-color); margin-bottom:2rem}
+    .logo{font-size:2.25rem;font-weight:800;
+      background:linear-gradient(45deg,var(--accent-cyan),var(--accent-magenta));
+      -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent
+    }
+    .subtitle{color:var(--text-secondary)}
+    .progress{margin:1.25rem 0 2rem}
+    .progress-text{color:var(--text-secondary); text-align:center; margin-bottom:.75rem}
+    .bar{height:8px;border:1px solid var(--border-color);border-radius:10px;overflow:hidden;background:rgba(255,255,255,.06)}
+    .fill{height:100%;width:0%;background:linear-gradient(90deg,var(--accent-cyan),var(--accent-magenta));transition:width .4s ease}
+    .question-card{
+      background:var(--bg-card); border:1px solid var(--border-color); border-radius:16px;
+      padding:1.5rem; margin-bottom:1.25rem; box-shadow:0 8px 32px rgba(0,0,0,.25); transition:var(--transition)
+    }
+    .question-card:hover{ border-color:var(--accent-cyan); box-shadow:var(--shadow-glow); transform:translateY(-2px) }
+    .q-num{ color:var(--accent-cyan); font-weight:600; font-size:.9rem; margin-bottom:.25rem}
+    .q-text{ font-size:1.05rem; font-weight:600; margin-bottom:1rem}
+    .choices{ display:flex; flex-direction:column; gap:.6rem }
+    .choice{ position:relative }
+    .choice input[type="radio"]{ position:absolute; opacity:0 }
+    .choice-label{
+      display:flex; align-items:center; gap:.75rem;
+      background:rgba(255,255,255,.05); border:1px solid var(--border-color);
+      border-radius:12px; padding:.8rem 1rem; cursor:pointer; transition:var(--transition)
+    }
+    .choice-label:hover{ background:rgba(0,255,255,.1); border-color:var(--accent-cyan); transform:translateX(4px) }
+    .dot{ width:18px; height:18px; border-radius:50%; border:2px solid var(--border-color) }
+    .choice input[type="radio"]:checked + .choice-label{ background:rgba(0,255,255,.2); border-color:var(--accent-cyan); box-shadow:0 0 12px rgba(0,255,255,.25) }
+    .choice input[type="radio"]:checked + .choice-label .dot{ background:var(--accent-cyan); border-color:var(--accent-cyan) }
+    .inline-actions{ margin-top:.8rem; display:flex; gap:.6rem; flex-wrap:wrap }
+    .reveal-btn{
+      background:transparent; color:var(--accent-cyan); border:1px solid var(--accent-cyan);
+      padding:.45rem .8rem; border-radius:10px; font-weight:600; cursor:pointer; transition:var(--transition)
+    }
+    .reveal-btn:hover{ background:var(--accent-cyan); color:var(--bg-primary) }
+    .inline-feedback{
+      margin-top:.9rem; padding:1rem; border-radius:12px; border:1px solid var(--border-color);
+      background:rgba(255,255,255,.05)
+    }
+    .inline-feedback .title{ font-weight:700; margin-bottom:.4rem }
+    .inline-feedback .ok{ color:var(--success); font-weight:700 }
+    .inline-feedback .bad{ color:var(--error); font-weight:700 }
+    .inline-feedback .explain{ color:var(--text-secondary); margin-top:.4rem }
+    .submit-wrap{ text-align:center; margin:2rem 0 0 }
+    .submit-btn{
+      background:linear-gradient(45deg,var(--accent-cyan),var(--accent-magenta)); color:var(--bg-primary);
+      border:none; padding:.9rem 2rem; border-radius:12px; font-weight:800; cursor:pointer;
+      letter-spacing:.3px; box-shadow:0 4px 20px rgba(0,255,255,.25)
+    }
+    .results{ margin-top:2rem; border-top:1px solid var(--border-color); padding-top:1.25rem; display:none }
+    .score{ text-align:center; padding:1.25rem; border:1px solid var(--border-color); border-radius:14px; background:var(--bg-card) }
+    @media (max-width:768px){ .logo{font-size:1.8rem} .q-text{font-size:1rem} }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1 class="logo">AI & GIS Analytics Quiz</h1>
+      <p class="subtitle">Simplified questions • Answers show under each question</p>
+    </header>
+
+    <section class="progress">
+      <div id="progressText" class="progress-text">0 / 20 answered</div>
+      <div class="bar"><div id="progressFill" class="fill"></div></div>
+    </section>
+
+    <form id="quizForm">
+      <div id="questionsContainer"></div>
+      <div class="submit-wrap">
+        <button id="submitBtn" class="submit-btn" type="submit">Finish & See Score</button>
+      </div>
+    </form>
+
+    <section id="results" class="results">
+      <div id="scoreBox" class="score"></div>
+    </section>
+  </div>
+
+<script>
+// ===== Simplified Questions (kept same answers/explanations) =====
+const sourceQuestions = [
+  {
+    id:"q1",
+    question:"What’s the difference between classification and detection in aerial images?",
+    choices:[
+      "Classification finds single objects; detection labels whole images",
+      "Classification labels pixels/areas; detection draws boxes around objects",
+      "Classification is for video; detection is for photos",
+      "Classification always needs more compute than detection"
+    ],
+    answerIndex:1,
+    explanation:"Classification makes a thematic map by labeling pixels/areas (e.g., land vs water). Detection finds and localizes targets with boxes (e.g., boats)."
+  },
+  {
+    id:"q2",
+    question:"When do you use segmentation instead of detection?",
+    choices:[
+      "To count how many objects exist",
+      "When you need exact pixel shapes and areas",
+      "When compute is very limited",
+      "Only with low‑resolution images"
+    ],
+    answerIndex:1,
+    explanation:"Segmentation gives pixel‑level masks for area/width measurement and clean GIS overlays (e.g., exact flood extent)."
+  },
+  {
+    id:"q3",
+    question:"How do you handle rare‑event class imbalance?",
+    choices:[
+      "Just collect more data evenly",
+      "Use class weights, (over/under)‑sampling, and focal loss",
+      "Switch to unsupervised learning",
+      "Drop some features"
+    ],
+    answerIndex:1,
+    explanation:"Weights, resampling, focal loss and anomaly baselines prevent “always normal” predictions on 1-in-1000 positives."
+  },
+  {
+    id:"q4",
+    question:"Which metrics are best for rare events?",
+    choices:[
+      "Overall accuracy",
+      "Precision, Recall, F1, and PR‑AUC",
+      "Mean squared error",
+      "Only training loss"
+    ],
+    answerIndex:1,
+    explanation:"Precision/Recall/F1/PR‑AUC focus on the positives and penalize false alarms; accuracy can be misleading."
+  },
+  {
+    id:"q5",
+    question:"What does a confusion matrix show?",
+    choices:[
+      "Compute cost of an algorithm",
+      "TP, FP, FN, TN counts by class",
+      "Best hyperparameters",
+      "Where objects are on the map"
+    ],
+    answerIndex:1,
+    explanation:"It shows counts of correct/incorrect per class, enabling precision/recall and revealing which classes get confused."
+  },
+  {
+    id:"q6",
+    question:"How do you build a simple geofence alert?",
+    choices:[
+      "Predict crossings with ML",
+      "Stream positions and run point‑in‑polygon checks",
+      "Forecast movement with time series only",
+      "Detect fence lines with computer vision"
+    ],
+    answerIndex:1,
+    explanation:"Run point‑in‑polygon for entry/exit on streamed positions. It’s fast and GIS‑native."
+  },
+  {
+    id:"q7",
+    question:"How do you fuse camera/radar/AIS data?",
+    choices:[
+      "Average all outputs",
+      "Kalman/Bayesian fusion of noisy observations",
+      "Pick only the most reliable sensor",
+      "Deep end‑to‑end fusion only"
+    ],
+    answerIndex:1,
+    explanation:"Kalman/Bayesian methods combine strengths and reduce noise (e.g., radar range + camera class)."
+  },
+  {
+    id:"q8",
+    question:"How do you forecast traffic volume?",
+    choices:[
+      "Randomly sample history",
+      "Time‑series models (ARIMA/ETS or neural nets) with calendar features",
+      "Simple linear trend",
+      "Treat it as classification only"
+    ],
+    answerIndex:1,
+    explanation:"Use time‑series models that capture daily/weekly cycles and seasonality to predict peaks."
+  },
+  {
+    id:"q9",
+    question:"When is anomaly detection better than supervised learning?",
+    choices:[
+      "When you have many labeled illicit events",
+      "When you have lots of normal data but few/no labels for illicit events",
+      "When compute is unlimited",
+      "When real‑time isn’t needed"
+    ],
+    answerIndex:1,
+    explanation:"Learn normal patterns and flag deviations (e.g., out‑of‑lane traffic at odd hours)."
+  },
+  {
+    id:"q10",
+    question:"Best way to cut labeling cost on big imagery?",
+    choices:[
+      "Hire more labelers",
+      "Active learning—label the most uncertain samples first",
+      "Use only pretrained models",
+      "Lower image resolution"
+    ],
+    answerIndex:1,
+    explanation:"Active learning directs human effort to borderline examples that improve the model fastest."
+  },
+  {
+    id:"q11",
+    question:"Can a model from one region work in another?",
+    choices:[
+      "Never—always retrain from scratch",
+      "Yes—use transfer learning and a bit of local fine‑tuning",
+      "Only if terrain is identical",
+      "Only for detection tasks"
+    ],
+    answerIndex:1,
+    explanation:"Transfer + small local fine‑tuning adapts to new backgrounds, lighting, and sensors."
+  },
+  {
+    id:"q12",
+    question:"How do you find likely routes across terrain?",
+    choices:[
+      "Straight‑line distance",
+      "Build a cost surface and run least‑cost path (A*/Dijkstra)",
+      "Only ML on past crossings",
+      "Random walks"
+    ],
+    answerIndex:1,
+    explanation:"Combine slope/land cover/barriers into cost and compute the path that minimizes difficulty/risk."
+  },
+  {
+    id:"q13",
+    question:"How do you explain model decisions to analysts?",
+    choices:[
+      "Show only final scores",
+      "Use feature importance/permutation importance/SHAP",
+      "Show only raw inputs",
+      "Show the architecture diagram"
+    ],
+    answerIndex:1,
+    explanation:"Importance/SHAP adds transparency and helps validation and debugging."
+  },
+  {
+    id:"q14",
+    question:"What is concept drift and how to handle it?",
+    choices:[
+      "Hardware wear‑out",
+      "Changing data patterns → monitor metrics and retrain",
+      "Overfitting",
+      "Network latency"
+    ],
+    answerIndex:1,
+    explanation:"When patterns shift (routes/seasons), performance degrades—track metrics and retrain on newer data."
+  },
+  {
+    id:"q15",
+    question:"Edge vs cloud—when to use each?",
+    choices:[
+      "Always cloud for best accuracy",
+      "Edge for low‑latency/limited links; cloud for heavy models/central analytics",
+      "Edge only to save cost",
+      "Cloud only for security"
+    ],
+    answerIndex:1,
+    explanation:"Run detection fast at the edge; do heavier weekly analysis in the cloud."
+  },
+  {
+    id:"q16",
+    question:"How do you pick a risk‑score threshold?",
+    choices:[
+      "Use the score midpoint",
+      "Use PR curves + cost of misses vs false alarms",
+      "Use historical average score",
+      "Maximize accuracy only"
+    ],
+    answerIndex:1,
+    explanation:"Choose an operating point that matches your capacity and risk tolerance (recall vs precision)."
+  },
+  {
+    id:"q17",
+    question:"Robust train/test split for large areas?",
+    choices:[
+      "Random split across all tiles",
+      "Split by space and time (train A/season1, test B/season2)",
+      "Test only the latest data",
+      "Temporal shuffle CV"
+    ],
+    answerIndex:1,
+    explanation:"Spatial+temporal split checks true generalization rather than memorizing backgrounds."
+  },
+  {
+    id:"q18",
+    question:"How should you handle privacy with people/vehicle data?",
+    choices:[
+      "Keep everything forever",
+      "Minimize data, blur/redact IDs, access controls, and audit logs",
+      "Use automation only—no humans",
+      "Encrypt but keep all detail forever"
+    ],
+    answerIndex:1,
+    explanation:"Collect the minimum, anonymize where possible, restrict access, and log usage."
+  },
+  {
+    id:"q19",
+    question:"Which NLP tasks help with cargo manifests?",
+    choices:[
+      "Sentiment analysis",
+      "Entity extraction, document classification, and anomaly checks",
+      "Translate all docs always",
+      "Only summarization"
+    ],
+    answerIndex:1,
+    explanation:"Extract key fields, classify docs, and flag unusual item‑route combos for risk review."
+  },
+  {
+    id:"q20",
+    question:"What are the key steps in an AI+GIS pipeline?",
+    choices:[
+      "Design → Code → Test → Deploy",
+      "Ingest → Clean/Engineer → Label → Train → Validate → Deploy → Monitor → Retrain",
+      "Collect → Analyze → Report → Archive",
+      "Plan → Build → Launch → Maintain"
+    ],
+    answerIndex:1,
+    explanation:"A full ML lifecycle keeps models robust and auditable with ongoing monitoring and retraining."
+  }
+];
+
+// ===== Behavior Flags =====
+const SHUFFLE_QUESTIONS = true;
+const SHUFFLE_CHOICES = true;
+const PASSING_THRESHOLD = 70;
+
+// ===== Utils =====
+function shuffle(arr){
+  const a=[...arr];
+  for(let i=a.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+function shuffleChoicesWithMapping(choices, correctIndex){
+  const pairs = choices.map((c,i)=>({c,i}));
+  const s = shuffle(pairs);
+  return { choices: s.map(p=>p.c), answerIndex: s.findIndex(p=>p.i===correctIndex) };
+}
+function esc(t){
+  const d=document.createElement('div'); d.textContent=t; return d.innerHTML;
+}
+
+// ===== State =====
+let questions=[];
+let userAnswers={};
+let isSubmitted=false;
+
+// ===== Init =====
+function init(){
+  userAnswers={}; isSubmitted=false;
+  questions = [...sourceQuestions];
+  if(SHUFFLE_QUESTIONS) questions = shuffle(questions);
+  if(SHUFFLE_CHOICES){
+    questions = questions.map(q=>{
+      const s=shuffleChoicesWithMapping(q.choices,q.answerIndex);
+      return {...q, choices:s.choices, answerIndex:s.answerIndex};
+    });
+  }
+  renderQuestions();
+  updateProgress();
+}
+
+// ===== Rendering =====
+function renderQuestions(){
+  const container=document.getElementById('questionsContainer');
+  container.innerHTML='';
+  questions.forEach((q,idx)=>{
+    const correctText = q.choices[q.answerIndex];
+    const card=document.createElement('div');
+    card.className='question-card';
+    card.dataset.qid=q.id;
+    card.innerHTML = `
+      <fieldset>
+        <legend class="sr-only">Question ${idx+1}</legend>
+        <div class="q-num">Question ${idx+1} of ${questions.length}</div>
+        <div class="q-text">${esc(q.question)}</div>
+        <div class="choices" role="radiogroup">
+          ${q.choices.map((ch,cidx)=>`
+            <div class="choice">
+              <input type="radio" id="q${idx+1}_c${cidx}" name="q${idx+1}" value="${cidx}" aria-label="${esc(ch)}">
+              <label for="q${idx+1}_c${cidx}" class="choice-label">
+                <span class="dot" aria-hidden="true"></span>
+                <span>${esc(ch)}</span>
+              </label>
+            </div>
+          `).join('')}
+        </div>
+
+        <div class="inline-actions">
+          <button type="button" class="reveal-btn" data-qid="${q.id}">Show answer</button>
+        </div>
+
+        <div class="inline-feedback" id="fb-${q.id}" hidden>
+          <div class="title">Answer</div>
+          <div><strong>Correct answer:</strong> <span class="ok">${esc(correctText)}</span></div>
+          <div id="fb-your-${q.id}" style="margin-top:.25rem;"></div>
+          <div class="explain"><strong>Why:</strong> ${esc(q.explanation)}</div>
+        </div>
+      </fieldset>
+    `;
+    container.appendChild(card);
+  });
+
+  // Events
+  container.addEventListener('change', onAnswer);
+  container.addEventListener('click', onRevealClick);
+}
+
+// ===== Events =====
+function onRevealClick(e){
+  const btn = e.target.closest('.reveal-btn');
+  if(!btn) return;
+  const qid = btn.dataset.qid;
+  const box = document.getElementById(`fb-${qid}`);
+  if(!box) return;
+  box.hidden = !box.hidden;
+  btn.textContent = box.hidden ? 'Show answer' : 'Hide answer';
+}
+function onAnswer(e){
+  if(e.target.type!=='radio') return;
+  const input = e.target;
+  const groupName = input.name; // q{index}
+  const qIndex = parseInt(groupName.substring(1))-1;
+  const q = questions[qIndex];
+  const chosen = parseInt(input.value);
+  userAnswers[q.id] = chosen;
+
+  // Show inline feedback
+  const fb = document.getElementById(`fb-${q.id}`);
+  const your = document.getElementById(`fb-your-${q.id}`);
+  const correct = (chosen === q.answerIndex);
+  if(your){
+    your.innerHTML = `<strong>Your answer:</strong> <span class="${correct?'ok':'bad'}">${esc(q.choices[chosen])} ${correct?'✓':'✗'}</span>`;
+  }
+  if(fb){ fb.hidden = false; }
+  const revealBtn = document.querySelector(`.reveal-btn[data-qid="${q.id}"]`);
+  if(revealBtn){ revealBtn.textContent = 'Hide answer'; }
+
+  updateProgress();
+}
+
+// ===== Progress & Score =====
+function updateProgress(){
+  const answered = Object.keys(userAnswers).length;
+  const total = questions.length;
+  document.getElementById('progressText').textContent = `${answered} / ${total} answered`;
+  const pct = Math.round((answered/total)*100);
+  document.getElementById('progressFill').style.width = pct + '%';
+}
+
+function computeScore(){
+  let correct=0;
+  questions.forEach(q=>{
+    const ua = userAnswers[q.id];
+    if(ua === q.answerIndex) correct++;
+  });
+  const total=questions.length;
+  const pct = Math.round((correct/total)*100);
+  return {correct,total,pct};
+}
+
+// ===== Submit =====
+document.getElementById('quizForm').addEventListener('submit', (e)=>{
+  e.preventDefault();
+  const {correct,total,pct} = computeScore();
+  const pass = pct >= PASSING_THRESHOLD;
+  const box = document.getElementById('scoreBox');
+  box.innerHTML = `
+    <div style="font-size:1.6rem;font-weight:800; background:linear-gradient(45deg,var(--accent-cyan),var(--accent-magenta)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;margin-bottom:.25rem">Quiz Complete</div>
+    <div style="color:var(--text-secondary); margin:.25rem 0">You got <strong>${correct}</strong> / ${total}</div>
+    <div style="margin:.25rem 0">Score: <strong>${pct}%</strong></div>
+    <div style="margin-top:.35rem;display:inline-block;padding:.25rem .6rem;border-radius:8px;border:1px solid ${pass?'var(--success)':'var(--error)'}; color:${pass?'var(--success)':'var(--error)'}; background:${pass?'rgba(0,255,136,.15)':'rgba(255,71,87,.15)'}">${pass?'✓ PASSED':'✗ FAILED'} (need ${PASSING_THRESHOLD}%)</div>
+  `;
+  document.getElementById('results').style.display = 'block';
+});
+
+// Kick off
+init();
+</script>
+</body>
+</html>
